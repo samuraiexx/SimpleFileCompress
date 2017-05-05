@@ -8,6 +8,7 @@
 #include <functional>
 #include <string>
 #include <bitset>
+#include <iostream>
 
 using namespace std;
 
@@ -60,11 +61,21 @@ void write_bchar(string input, string name){
 }
 
 int main(){
-	ftree T("cano.txt");
-//	T.zip("zipped.txt");
-	T.unzip("unzipped.txt");
-//	write_bchar("le-petit-prince.txt");
-	
+	string type, file_name, save_name;
+	do{
+	cout << "Write \"zip\" to compress a file or \"unzip\" to decompress" << endl;
+	cin >> type;
+	} while (type != "zip" && type != "unzip");
+	cout << endl << "What is the name of the file that will be compressed or decompressed?" << endl;
+	cin >> file_name;
+	cout << endl << "And what is the name you want to save the new file with?" << endl;
+	cin >> save_name;
+	ftree T(file_name);
+	if (type == "zip")
+		T.zip(save_name);
+	else
+		T.unzip(save_name);
+	return 0;
 }
 
 
@@ -109,7 +120,6 @@ ftree::ftree(string file) : input(file, ifstream::binary)
 	delete q.top();
 	dfs(&this->T, seq);
 }
-
 
 void ftree::dfs(node *T, map<char, string> &seq, string &s)
 {
@@ -167,7 +177,6 @@ void ftree::zip(string file){
 	zip.write((const char*) &obuffer[0], obuffer.size());
 	zip.close();
 }
-
 
 void ftree::unzip(string name)
 {
