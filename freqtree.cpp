@@ -12,6 +12,8 @@
 
 using namespace std;
 
+
+
 class ftree{
 	class node{
 	public:
@@ -29,6 +31,12 @@ class ftree{
 	map<char, int> freq;
 	void dfs(node *T, map<char, string> &seq, string &s = string());
 public:
+	class comparator {
+	public:
+		bool operator()(const node *T1, const node *T2) const {
+			return T1->w > T2->w;
+		}
+	};
 	~ftree();
 	ftree(string file);
 	void zip(string name);
@@ -63,8 +71,8 @@ void write_bchar(string input, string name){
 int main(){
 	string type, file_name, save_name;
 	do{
-	cout << "Write \"zip\" to compress a file or \"unzip\" to decompress" << endl;
-	cin >> type;
+		cout << "Write \"zip\" to compress a file or \"unzip\" to decompress" << endl;
+		cin >> type;
 	} while (type != "zip" && type != "unzip");
 	cout << endl << "What is the name of the file that will be compressed or decompressed?" << endl;
 	cin >> file_name;
@@ -81,7 +89,7 @@ int main(){
 
 ftree::ftree(string file) : input(file, ifstream::binary)
 {
-	priority_queue < node*, vector<node*>, greater<node*>> q;
+	priority_queue < node*, vector<node*>, ftree::comparator> q;
 
 	char c;
 
