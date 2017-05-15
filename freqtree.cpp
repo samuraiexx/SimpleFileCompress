@@ -24,19 +24,19 @@ class ftree{
 		node(char c, int w) :r(NULL), l(NULL), c(c), w(w){}
 		node() :r(NULL), l(NULL), c('\0'), w(0){}
 		~node(){ if (this->r != NULL) delete this->r, delete this->l; }
+		class comparator {
+		public:
+			bool operator()(const node *T1, const node *T2) const {
+				return T1->w > T2->w;
+			}
+		};
 	};
 	ifstream input;
 	node T;
 	map<char, string> seq;
 	map<char, int> freq;
 	void dfs(node *T, map<char, string> &seq, string &s = string());
-public:
-	class comparator {
-	public:
-		bool operator()(const node *T1, const node *T2) const {
-			return T1->w > T2->w;
-		}
-	};
+public:	
 	~ftree();
 	ftree(string file);
 	void zip(string name);
@@ -89,8 +89,7 @@ int main(){
 
 ftree::ftree(string file) : input(file, ifstream::binary)
 {
-	priority_queue < node*, vector<node*>, ftree::comparator> q;
-
+	priority_queue < node*, vector<node*>, node::comparator> q;
 	char c;
 
 	while (!input.eof())
