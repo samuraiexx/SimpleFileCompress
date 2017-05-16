@@ -41,7 +41,6 @@ public:
 	ftree(string file);
 	void zip(string name);
 	void unzip(string name);
-	bool operator>(const ftree other)const{ return T.w > other.T.w; }
 };
 
 void write_bchar(string input, string name){
