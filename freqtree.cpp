@@ -37,7 +37,7 @@ public:
 };
 
 int main(){
-	/*string type, file_name, save_name;
+	string type, file_name, save_name;
 	do{
 		cout << "Write \"zip\" to compress a file or \"unzip\" to decompress" << endl;
 		cin >> type;
@@ -47,11 +47,9 @@ int main(){
 	cout << endl << "And what is the name you want to save the new file with?" << endl;
 	cin >> save_name;
 	if (type == "zip")
-		ftree::zip(file_name, save_name, 1);
+		ftree::zip(file_name, save_name, 1); // 1 is the number of bytes per leaf
 	else
-		ftree::unzip(file_name, save_name);*/
-	ftree::zip("le-petit-prince.txt", "zipped.txt", 1);
-	ftree::unzip("zipped.txt", "unzipped.txt");
+		ftree::unzip(file_name, save_name);
 	return 0;
 }
 
