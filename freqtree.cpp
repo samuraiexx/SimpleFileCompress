@@ -13,62 +13,31 @@
 using namespace std;
 
 
-
 class ftree{
-	class node{
+	class vnode{
 	public:
-		node *r, *l;
-		int w;
-		char c;
-		node(node *r, node *l) :r(r), l(l), c('\0'), w(r->w + l->w){}
-		node(char c, int w) :r(NULL), l(NULL), c(c), w(w){}
-		node() :r(NULL), l(NULL), c('\0'), w(0){}
-		~node(){ if (this->r != NULL) delete this->r, delete this->l; }
-		class comparator {
-		public:
-			bool operator()(const node *T1, const node *T2) const {
-				return T1->w > T2->w;
-			}
-		};
+		int l, r; // left child, right child
+		vnode(int r, int l) : l(l), r(r){}
+		vnode(){}
 	};
-	ifstream input;
-	node T;
-	map<char, string> seq;
-	map<char, int> freq;
-	void dfs(node *T, map<char, string> &seq, string &s = string());
-public:	
-	~ftree();
-	ftree(string file);
-	void zip(string name);
-	void unzip(string name);
+	class q_vnode{
+	public:
+		int w, p;
+		vnode vn;
+		bool operator>(const q_vnode &v2)const{ return w > v2.w; }
+		q_vnode(int w, int p, vnode vn) : w(w), p(p), vn(vn){}
+		q_vnode(){}
+	};
+	static void dfs(const int p, char **seq_unt, vnode *T, map<string, string> &seq, const int &seq_size, string &s = string(""));
+	static void cut_file(int seq_size, string file, vector<string> &cutted);
+	static int gen_bin(string &buffer, map<string, string> &seq, const string &srcf, const int &seq_size);
+public:
+	static void zip(string srcf, string zipf, int seq_size);
+	static void unzip(string src, string dest);
 };
 
-void write_bchar(string input, string name){
-	ofstream out(name);
-	ifstream in(input);
-	while (!in.eof())
-	{
-		char c = in.get();
-		stack<char> st;
-		if (in.eof())
-			break;
-		for (int i = 0; i < 8; i++, c/=2)
-			if (c % 2 == 1)
-				st.push('1');
-			else
-				st.push('0');
-		while (!st.empty())
-		{
-			out << st.top();
-			st.pop();
-		}
-	}
-	out.close();
-	in.close();
-}
-
 int main(){
-	string type, file_name, save_name;
+	/*string type, file_name, save_name;
 	do{
 		cout << "Write \"zip\" to compress a file or \"unzip\" to decompress" << endl;
 		cin >> type;
@@ -77,198 +46,248 @@ int main(){
 	cin >> file_name;
 	cout << endl << "And what is the name you want to save the new file with?" << endl;
 	cin >> save_name;
-	ftree T(file_name);
 	if (type == "zip")
-		T.zip(save_name);
+		ftree::zip(file_name, save_name, 1);
 	else
-		T.unzip(save_name);
+		ftree::unzip(file_name, save_name);*/
+	ftree::zip("le-petit-prince.txt", "zipped.txt", 1);
+	ftree::unzip("zipped.txt", "unzipped.txt");
 	return 0;
 }
 
-
-ftree::ftree(string file) : input(file, ifstream::binary)
+void ftree::dfs(const int p, char **seq_unt, vnode *tree, map<string, string> &seq, const int &seq_size, string &s)
 {
-	priority_queue < node*, vector<node*>, node::comparator> q;
-	char c;
-
-	while (!input.eof())
+	if (tree[p].l > 0) // If tree.l is negative, it's a leaf
 	{
-		c = input.get();
-		if (input.eof())
-			break;
+		s.push_back('0');
+		dfs(tree[p].l, seq_unt, tree, seq, seq_size, s);
+		s.pop_back();
+	}
+	else // Hit a char
+		seq[string(seq_unt[-1 - tree[p].l], seq_unt[-1 - tree[p].l] + seq_size)] = s + '0';
+
+	if (tree[p].r > 0)
+	{
+		s.push_back('1');
+		dfs(tree[p].r, seq_unt, tree, seq, seq_size, s);
+		s.pop_back();
+	}
+	else
+		seq[string(seq_unt[-1-tree[p].r], seq_unt[-1-tree[p].r] + seq_size)] = s + '1';
+}
+void ftree::zip(string srcf, string zipf, int seq_size)
+{
+	map<string, string> seq;
+	map<string, int> freq;
+	vector<pair<int, string>> sortted_freq;
+	priority_queue < q_vnode, vector<q_vnode>, greater<q_vnode>> q;
+	ofstream zip; ifstream src;
+	vector<vnode> tree(1);
+	char **seq_unt;
+	int *w_seq_unt;
+
+	src.open(srcf, ifstream::binary);
+	while (!src.eof())
+	{
+		string c;
+		char u;
+		for (int i = 0; i < seq_size; i++)
+		{
+			u = src.get();
+			if (src.eof())
+				break;
+			c.push_back(u);
+		}
+		if (src.eof()) break;
 		if (freq.count(c) == 0)
 			freq[c] = 1;
 		else
 			freq[c]++;
 	}
-	input.clear();
-	input.seekg(0, ios::beg);
+	src.close();
 
+	seq_unt = new char*[freq.size()];
+	w_seq_unt = new int[freq.size()];
 
-	for (auto it = freq.begin(); it != freq.end(); it++)
+	for (auto fq : freq)
+		sortted_freq.push_back(make_pair(fq.second, fq.first));
+	sort(sortted_freq.begin(), sortted_freq.end());
+	
+	int i = 0;
+	for (auto fq : sortted_freq)
 	{
-		node *T = new node(it->first, it->second);
-		q.push(T);
+		seq_unt[i] = new char[seq_size];
+		for (int j = 0; j < seq_size; j++)
+			seq_unt[i][j] = fq.second[j];
+		w_seq_unt[i] = fq.first;
+		i++;
 	}
 
-	while (q.size() > 1)
+	i = 0;
+	while (true)
 	{
-		node *a = q.top();
-		q.pop();
-		node *b = q.top();
-		q.pop();
-		node *T = new node(a, b);
-		q.push(T);
+		q_vnode tmp1, tmp2;
+		for (q_vnode* tmp : { &tmp1, &tmp2 }){
+			if (q.empty() || (i < freq.size() && q.top().w > w_seq_unt[i]))
+			{
+				tmp->w = w_seq_unt[i];
+				tmp->p = - 1 - i;
+				i++;
+			}
+			else
+			{
+				*tmp = q.top();
+				q.pop();
+			}
+		}
+		if (q.size() > 0 || i < freq.size())
+		{
+			tree.push_back(vnode(tmp1.p, tmp2.p));
+			q.push(q_vnode(tmp1.w + tmp2.w, tree.size() - 1, *(tree.end() - 1)));
+		}
+		else
+		{
+			tree[0] = vnode(tmp1.p, tmp2.p);
+			break;
+		}
 	}
-	delete T.r, T.l;
-	T = *q.top();
-	q.top()->r = NULL; q.top()->l = NULL; // In order to delete only the top node
-	delete q.top();
-	dfs(&this->T, seq);
+
+	dfs(0, seq_unt, &tree[0], seq, seq_size);
+
+	string bin;
+	int lb_size = gen_bin(bin, seq, srcf, seq_size);
+
+	zip.open(zipf, ofstream::binary);
+	int unt_amount = freq.size();
+	int tree_size = tree.size();
+
+	zip.write((char*)&seq_size, sizeof(int));
+	zip.write((char*)&unt_amount, sizeof(int));
+	zip.write((char*)&tree_size, sizeof(int));
+	zip.write((char*)&lb_size, sizeof(int));
+
+	for (int i = 0; i < unt_amount; i++)
+		zip.write(seq_unt[i], seq_size);
+	zip.write((char*)&tree[0], tree_size*sizeof(vnode));
+	zip.write((char*)&bin[0], bin.size());
+	zip.close();
+	delete[] w_seq_unt;
+	for (int i = 0; i < unt_amount; i++)
+		delete[] seq_unt[i];
+	delete[] seq_unt;
 }
 
-void ftree::dfs(node *T, map<char, string> &seq, string &s)
+void ftree::unzip(string src, string dest)
 {
-	if (T->l != NULL) // If T.l is different of NULL then, T.r is too
+	int seq_size, unt_amount, tree_size, lb_size;
+	vnode *tree;
+	char c;
+	char **seq_unt;
+	string buffer, out;
+
+	ifstream zip(src, ifstream::binary);
+	zip.read((char*)&seq_size, sizeof(int));
+	zip.read((char*)&unt_amount, sizeof(int));
+	zip.read((char*)&tree_size, sizeof(int));
+	zip.read((char*)&lb_size, sizeof(int));
+	seq_unt = new char*[unt_amount];
+	for (int i = 0; i < unt_amount; i++)
 	{
-		s.push_back('0');
-		dfs(T->l, seq, s);
-		s.pop_back();
-		s.push_back('1');
-		dfs(T->r, seq, s);
-		s.pop_back();
+		seq_unt[i] = new char[seq_size];
+		zip.read(seq_unt[i], seq_size);
 	}
-	else // Hit a char
-		seq[T->c] = s;
-	return;
+	tree = new vnode[tree_size];
+	zip.read((char*)tree, tree_size*sizeof(vnode));
+	while (true){
+		c = zip.get();
+		if (zip.eof()) break;
+		buffer.push_back(c);
+	}
+	zip.close();
+
+	int p = 0;
+	for (int i = 0; i < buffer.size(); i++)
+	{
+		int b_size = 8;
+		bitset<8> byte = buffer[i];
+		string s_byte = byte.to_string();
+		if (i == buffer.size() - 1 && lb_size > 0)
+			b_size = lb_size;
+		for (int j = 0; j < b_size; j++)
+		{
+			char b = s_byte[j];
+			if (b == '0')
+			{
+				if (tree[p].l > 0)
+					p = tree[p].l;
+				else
+				{
+					for (int k = 0; k < seq_size; k++)
+						out.push_back(seq_unt[-1-tree[p].l][k]);
+					p = 0;
+				}
+			}
+			else
+			{
+				if (tree[p].r > 0)
+					p = tree[p].r;
+				else
+				{
+					for (int i = 0; i < seq_size; i++)
+						out.push_back(seq_unt[-1-tree[p].r][i]);
+					p = 0;
+				}
+			}
+		}
+	}
+
+	ofstream unzipped(dest, ofstream::binary);
+	unzipped.write(&out[0], out.size());
+	unzipped.close();
+	for (int i = 0; i < unt_amount; i++)
+		delete[] seq_unt[i];
+	delete[] seq_unt;
+	delete[] tree;
 }
 
-void ftree::zip(string file){
-	ofstream zip(file, ofstream::binary);
-	vector<unsigned char> obuffer(4);
+void ftree::cut_file(int seq_size, string file, vector<string> &cutted)
+{
+	ifstream src(file, ofstream::binary);
+
+	src.seekg(0, src.end);
+	int size = src.tellg();
+	src.seekg(0);
+
+	char *buffer = new char[size];
+	src.read(buffer, size);
+	src.close();
+
+	for (int i = 0; i < size;)
+	{
+		string tmp;
+		for (int j = 0; j < seq_size && i < size; j++)
+			tmp.push_back(buffer[i++]);
+		cutted.push_back(tmp);
+	}
+}
+
+int ftree::gen_bin(string &buffer, map<string, string> &seq, const string &srcf, const int &seq_size)
+{
+	vector<string> cutted;
 	string binary;
-	int tree_size;
+	cut_file(seq_size, srcf, cutted);
 
-	input.seekg(0, input.end);
-	int size = input.tellg();
-	input.seekg(0);
+	for (auto c : cutted)
+		binary += seq[c];
 
-	char *ibuffer = new char[size];
-	input.read(ibuffer, size);
-
-	string tree;
-	for (auto it = seq.begin(); it != seq.end(); it++)
-		tree = tree + it->first + ' ' + it->second + ' ';
-	tree_size = tree.size();
-
-	for (int i = 0; i < 4; i++)	// Insert the number of bytes spent to save the tree structure
-		obuffer[3 - i] = (tree_size >> (i * 8));
-
-	for (int i = 0; i < size; i++)
-		binary += seq[ibuffer[i]];
-
-	obuffer.push_back((unsigned char)binary.size() % 8); // Insert the number of bits of the last encipted byte
-
-	for (auto it = tree.begin(); it != tree.end(); it++) // Insert the tree structure
-		obuffer.push_back(*it);
-
-	for (auto it = binary.begin(); it != binary.end();) // Insert EncriptedFile
+	for (auto it = binary.begin(); it != binary.end();) // Insert the compressed file in the output buffer
 	{
 		unsigned char byte = 0;
 		for (int i = 0; i < 8 && it != binary.end(); i++, it++)
 			if (*it == '1') byte |= 1 << (7 - i);
-		obuffer.push_back(byte);
+		buffer.push_back(byte);
 	}
-
-	zip.write((const char*) &obuffer[0], obuffer.size());
-	zip.close();
+	return binary.size() % 8; // return the last byte size
 }
 
-void ftree::unzip(string name)
-{
-	ifstream &zip = input;
-	char c;
-	int i;
 
-	zip.seekg(0, zip.end);
-	long size = zip.tellg();
-	zip.seekg(0);
-
-	char *buffer = new char[size];
-	zip.read(buffer, size);
-	
-	int tree_size = 0;
-	unsigned char lastByte_size;
-
-	for (i = 0; i < 4; i++)
-		tree_size += (((unsigned char)buffer[i]) << 8*(3-i));
-	lastByte_size = buffer[i++]; // i = 4 -> 5
-
-	map<char, string> seq;
-
-	while (i < tree_size + 5)
-	{
-		string s;
-		char tmp;
-		c = buffer[i++];
-		i++; // jump space
-		while ((tmp = buffer[i++]) != ' ')
-			s.push_back(tmp);
-		seq[c] = s;
-	}
-	
-	node *unzipT = new node;
-
-	for (auto it = seq.begin(); it != seq.end(); it++)
-	{
-		node *T = unzipT;
-		for (auto c = it->second.begin(); c != it->second.end(); c++)
-		{
-			if (*c == '0')
-			{
-				if (T->l == NULL)
-					T->l = new node();
-				T = T->l;
-			}
-			else
-			{
-				if (T->r == NULL)
-					T->r = new node();
-				T = T->r;
-			}
-		}
-		T->c = it->first;
-	}
-
-	ofstream out(name, ofstream::binary);
-	node *T = unzipT;
-
-	while (i < size)
-	{
-		bitset<8> byte = buffer[i++];
-		if (i > size - 8)
-			byte >> lastByte_size;
-		string tmp = byte.to_string();
-		for (int i = 0; i < 8; i++)
-		{
-			c = tmp[i];
-			if (c == '0')
-				T = T->l;
-			else
-				T = T->r;
-			if (T->l == NULL || T->r == NULL)
-			{
-				out << T->c;
-				T = unzipT;
-			}
-		}
-	}
-
-	delete unzipT;
-	out.close();
-}
-
-ftree::~ftree(){
-	if (input.is_open())
-		input.close();
-}
